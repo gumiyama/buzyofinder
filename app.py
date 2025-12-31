@@ -179,6 +179,7 @@ st.set_page_config(
 # タイトル
 st.title("🤖 AI分譲マンションファインダー")
 st.markdown("一都三県の分譲マンション物件をAIが科学的に分析し、真のお得物件を発掘します")
+st.caption("Last Updated: 2025-12-31 17:45")  # 更新確認用
 
 # データベース初期化
 @st.cache_resource
