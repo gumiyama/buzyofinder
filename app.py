@@ -172,14 +172,17 @@ class SafePropertyScorer:
 # ページ設定
 st.set_page_config(
     page_title="AI分譲マンションファインダー",
-    page_icon="🤖",
+    page_icon="assets/app_logo.png",
     layout="wide"
 )
 
+# サイドバー（ロゴ表示）
+st.sidebar.image("assets/app_logo.png", use_container_width=True)
+
 # タイトル
-st.title("🤖 AI分譲マンションファインダー")
+st.title("AI分譲マンションファインダー")
 st.markdown("一都三県の分譲マンション物件をAIが科学的に分析し、真のお得物件を発掘します")
-st.caption("Last Updated: 2025-12-31 17:45")  # 更新確認用
+st.caption("Last Updated: 2025-12-31 18:00")  # 更新確認用
 
 # データベース初期化
 @st.cache_resource
