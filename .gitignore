@@ -41,6 +41,7 @@ logs/
 # I will decide to IGNORE the db to avoid conflicts and size issues.
 *.db
 *.sqlite3
+!data/mansion_scientist.db
 
 # OS
 .DS_Store
