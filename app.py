@@ -138,7 +138,8 @@ class SafePropertyScorer:
         ])
         
         total_score = sum(weighted_scores.values())
-        normalized_score = (total_score / total_max) * 100 if total_max > 0 else 0
+        raw_normalized_score = (total_score / total_max) * 100 if total_max > 0 else 0
+        normalized_score = min(100.0, raw_normalized_score)  # 上限を100点にキャップ
         
         # スコアランク判定
         rank = self._get_rank(normalized_score)
