@@ -180,14 +180,6 @@ st.set_page_config(
 st.title("🤖 AI分譲マンションファインダー")
 st.markdown("一都三県の分譲マンション物件をAIが科学的に分析し、真のお得物件を発掘します")
 
-# 🔐 簡易パスワード保護
-# GitHubがPublic（公開）でも、アプリの中身を見られないようにするための機能です。
-# 必要なければこのブロックを削除してください。
-check_password = st.sidebar.text_input("🔑 合言葉を入力してください", type="password")
-if check_password != "mansion":  # ← ここにお好きなパスワードを設定
-    st.warning("🔒 このアプリはプライベートモードです。サイドバーに合言葉を入力してください。（初期パスワード: mansion）")
-    st.stop()  # ここで処理を停止（これ以降の画面は表示されない）
-
 # データベース初期化
 @st.cache_resource
 def init_database():
