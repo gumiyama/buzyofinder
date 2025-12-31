@@ -205,7 +205,13 @@ def get_unique_stations():
             Property.station_name != None,
             Property.station_name != ''
         ).distinct().order_by(Property.station_name).all()
-        return [r[0] for r in results]
+        stations = [r[0] for r in results]
+        
+        # 「バス」が含まれるものを後ろに回す
+        train_stations = [s for s in stations if "バス" not in s]
+        bus_stations = [s for s in stations if "バス" in s]
+        
+        return train_stations + bus_stations
     except Exception as e:
         logger.error(f"Error fetching stations: {e}")
         return []
