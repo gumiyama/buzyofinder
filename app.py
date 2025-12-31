@@ -243,7 +243,6 @@ station_options = get_unique_stations()
 station_filter = st.sidebar.multiselect(
     "最寄り駅を選択",
     options=station_options,
-    options=station_options,
     default=[]
 )
 
