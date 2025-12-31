@@ -215,6 +215,34 @@ def get_unique_stations():
     except Exception as e:
         logger.error(f"Error fetching stations: {e}")
         return []
+        session.close()
+
+# 利用可能な都道府県と市区町村を取得
+@st.cache_data(ttl=3600)
+def get_locations():
+    session = get_db_session()
+    try:
+        # 都道府県
+        prefs = session.query(Property.prefecture).filter(
+            Property.prefecture != None
+        ).distinct().all()
+        prefs = [r[0] for r in prefs]
+        
+        # 市区町村（都道府県ごと）
+        cities = session.query(Property.prefecture, Property.city).filter(
+            Property.city != None
+        ).distinct().all()
+        
+        city_map = {}
+        for p, c in cities:
+            if not p: continue
+            if p not in city_map: city_map[p] = []
+            city_map[p].append(c)
+            
+        return prefs, city_map
+    except Exception as e:
+        logger.error(f"Error fetching locations: {e}")
+        return [], {}
     finally:
         session.close()
 
@@ -222,10 +250,30 @@ def get_unique_stations():
 st.sidebar.header("⚙️ 設定")
 
 # 地域フィルタ
-CITIES = ["千代田区", "中央区", "港区", "新宿区", "文京区", "台東区", "墨田区", "江東区", "品川区", "目黒区", "大田区", "世田谷区", "渋谷区", "中野区", "杉並区", "豊島区", "北区", "荒川区", "板橋区", "練馬区", "足立区", "葛飾区", "江戸川区"]
+prefs, city_map = get_locations()
+
+# 都道府県選択
+selected_prefs = st.sidebar.multiselect(
+    "都道府県を選択",
+    options=prefs,
+    default=[]
+)
+
+# 市区町村選択
+available_cities = []
+if selected_prefs:
+    for p in selected_prefs:
+        available_cities.extend(city_map.get(p, []))
+else:
+    # 都道府県未選択時は全表示（ただし多すぎる場合は制限するなど検討）
+    for cities in city_map.values():
+        available_cities.extend(cities)
+        
+available_cities = sorted(list(set(available_cities)))
+
 city_filter = st.sidebar.multiselect(
-    "地域を選択",
-    options=CITIES,
+    "市区町村を選択",
+    options=available_cities,
     default=[]
 )
 
@@ -266,7 +314,7 @@ layout_filter = st.sidebar.multiselect(
 
 # データベースから物件を取得
 # @st.cache_data(ttl=60)  # 反映を早めるため1分に短縮
-def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None, age_range=None):
+def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None, age_range=None, prefecture_filter=None):
     """データベースから物件データを取得"""
     try:
         session = get_db_session()
@@ -283,7 +331,11 @@ def get_properties_from_db(layout_filter=None, city_filter=None, price_range=Non
             min_a, max_a = age_range
             query = query.filter(Property.building_age >= min_a, Property.building_age <= max_a)
             
+        if prefecture_filter:
+            query = query.filter(Property.prefecture.in_(prefecture_filter))
+            
         if city_filter:
+            # 市区町村フィルタがある場合はそちらを優先（AND条件になるのでOK）
             from sqlalchemy import or_
             conditions = [Property.city.like(f"%{city}%") for city in city_filter]
             query = query.filter(or_(*conditions))
@@ -497,7 +549,8 @@ properties = get_properties_from_db(
     city_filter=city_filter,
     price_range=(price_min, price_max),
     station_filter=station_filter,
-    age_range=(age_min, age_max)
+    age_range=(age_min, age_max),
+    prefecture_filter=selected_prefs
 )
 scored_properties = calculate_scores(properties)
 
