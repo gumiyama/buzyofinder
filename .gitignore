@@ -1,0 +1,48 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Logs
+logs/
+*.log
+
+# Database
+# mansion.db contains scraped data. 
+# Uncomment the next line if you DO NOT want to upload data to GitHub
+# *.db
+# For now, I'm keeping the DB if it's small, but usually we ignore it.
+# Given it's a personal scraping tool, user might want the data. 
+# But standard practice is to ignore sqlite. 
+# I will decide to IGNORE the db to avoid conflicts and size issues.
+*.db
+*.sqlite3
+
+# OS
+.DS_Store
+._*.swp
+.vscode/

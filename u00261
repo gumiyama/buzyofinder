@@ -1,0 +1,4 @@
+2025-12-27 22:53:36,240 - src.scrapers.suumo_scraper - INFO - Starting search for tokyo, max_pages=2
+2025-12-27 22:53:36,240 - src.scrapers.suumo_scraper - INFO - Scraping page 1: https://suumo.jp/ms/chuko/tokyo/city/
+2025-12-27 22:53:36,818 - src.scrapers.suumo_scraper - INFO - No more properties found on page 1
+2025-12-27 22:53:36,818 - src.scrapers.suumo_scraper - INFO - Total properties found: 0
