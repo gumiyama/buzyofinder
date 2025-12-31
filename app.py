@@ -243,7 +243,17 @@ station_options = get_unique_stations()
 station_filter = st.sidebar.multiselect(
     "最寄り駅を選択",
     options=station_options,
+    options=station_options,
     default=[]
+)
+
+# 築年数フィルタ
+age_min, age_max = st.sidebar.slider(
+    "築年数 (年)",
+    min_value=0,
+    max_value=60,
+    value=(0, 60),
+    step=1
 )
 
 # 間取りフィルタ
@@ -257,7 +267,7 @@ layout_filter = st.sidebar.multiselect(
 
 # データベースから物件を取得
 # @st.cache_data(ttl=60)  # 反映を早めるため1分に短縮
-def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None):
+def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None, age_range=None):
     """データベースから物件データを取得"""
     try:
         session = get_db_session()
@@ -269,6 +279,10 @@ def get_properties_from_db(layout_filter=None, city_filter=None, price_range=Non
         
         if station_filter:
             query = query.filter(Property.station_name.in_(station_filter))
+            
+        if age_range:
+            min_a, max_a = age_range
+            query = query.filter(Property.building_age >= min_a, Property.building_age <= max_a)
             
         if city_filter:
             from sqlalchemy import or_
@@ -483,7 +497,8 @@ properties = get_properties_from_db(
     layout_filter=layout_filter, 
     city_filter=city_filter,
     price_range=(price_min, price_max),
-    station_filter=station_filter
+    station_filter=station_filter,
+    age_range=(age_min, age_max)
 )
 scored_properties = calculate_scores(properties)
 
