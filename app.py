@@ -21,13 +21,13 @@ logger = logging.getLogger(__name__)
 class SafePropertyScorer:
     """物件の総合お得度スコアを算出（Safe Version）"""
     
-    # 標準の重み係数
+    # 標準の重み係数（全て1.0に統一して100点超えを防止）
     WEIGHTS = {
         'price': 1.0,      # 価格適正性: 30点
-        'location': 1.1,   # 立地: 27.5点
+        'location': 1.0,   # 立地: 25.0点
         'spec': 1.0,       # 物件スペック: 25.0点
         'cost': 1.0,       # 維持コスト: 15.0点
-        'future': 1.1      # 将来性: 5.5点
+        'future': 1.0      # 将来性: 5.0点
     }
     
     def __init__(self):
