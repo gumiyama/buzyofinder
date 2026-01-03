@@ -183,7 +183,7 @@ st.sidebar.image("assets/app_logo.png", use_container_width=True)
 # タイトル
 st.title("AI分譲マンションファインダー")
 st.markdown("一都三県の分譲マンション物件をAIが科学的に分析し、真のお得物件を発掘します")
-st.caption("Last Updated: 2026-01-01 21:57 | Total: 5,124 properties")  # 更新確認用
+st.caption("v1.2 | Last Updated: 2026-01-03 13:00 | 路線フィルタ対応")  # 更新確認用
 
 # データベース初期化
 @st.cache_resource
