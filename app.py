@@ -246,6 +246,38 @@ def get_locations():
     finally:
         session.close()
 
+# 利用可能な路線を取得
+@st.cache_data(ttl=3600)
+def get_unique_lines():
+    session = get_db_session()
+    try:
+        results = session.query(Property.access_info).filter(
+            Property.access_info != None,
+            Property.access_info != ''
+        ).all()
+        
+        lines = set()
+        for r in results:
+            if r[0]:
+                # access_infoを行ごとに分割
+                access_lines = r[0].split('\n')
+                for line in access_lines:
+                    # "東京メトロ日比谷線 秋葉原 徒歩3分" から "東京メトロ日比谷線" を抽出
+                    parts = line.strip().split()
+                    if len(parts) >= 2:
+                        # 最初の要素が路線名（例：「JR山手線」「東京メトロ日比谷線」）
+                        railway_line = parts[0]
+                        # "線" で終わっているかチェック
+                        if '線' in railway_line:
+                            lines.add(railway_line)
+        
+        return sorted(list(lines))
+    except Exception as e:
+        logger.error(f"Error fetching railway lines: {e}")
+        return []
+    finally:
+        session.close()
+
 # サイドバー
 st.sidebar.header("⚙️ 設定")
 
@@ -284,6 +316,15 @@ price_min, price_max = st.sidebar.slider(
     max_value=30000,
     value=(0, 20000),
     step=500
+)
+
+# 路線フィルタ
+line_options = get_unique_lines()
+line_filter = st.sidebar.multiselect(
+    "🚇 路線で絞り込み",
+    options=line_options,
+    default=[],
+    help="例: JR京浜東北線、東京メトロ日比谷線など"
 )
 
 # 駅フィルタ
@@ -328,7 +369,7 @@ layout_filter = st.sidebar.multiselect(
 
 # データベースから物件を取得
 # @st.cache_data(ttl=60)  # 反映を早めるため1分に短縮
-def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None, age_range=None, prefecture_filter=None):
+def get_properties_from_db(layout_filter=None, city_filter=None, price_range=None, station_filter=None, age_range=None, prefecture_filter=None, line_filter=None):
     """データベースから物件データを取得"""
     try:
         session = get_db_session()
@@ -357,6 +398,12 @@ def get_properties_from_db(layout_filter=None, city_filter=None, price_range=Non
         if price_range:
             min_p, max_p = price_range
             query = query.filter(Property.price >= min_p, Property.price <= max_p)
+        
+        if line_filter:
+            # 路線フィルタ：access_infoに指定された路線が含まれる物件を抽出
+            from sqlalchemy import or_
+            line_conditions = [Property.access_info.like(f"%{line}%") for line in line_filter]
+            query = query.filter(or_(*line_conditions))
             
         properties_db = query.all()
         
@@ -564,7 +611,8 @@ properties = get_properties_from_db(
     price_range=(price_min, price_max),
     station_filter=station_filter,
     age_range=(age_min, age_max),
-    prefecture_filter=selected_prefs
+    prefecture_filter=selected_prefs,
+    line_filter=line_filter
 )
 scored_properties = calculate_scores(properties)
 
