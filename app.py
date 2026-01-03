@@ -288,9 +288,23 @@ price_min, price_max = st.sidebar.slider(
 
 # 駅フィルタ
 station_options = get_unique_stations()
+
+# 駅名検索ボックス
+station_search = st.sidebar.text_input(
+    "🔍 駅名で検索",
+    placeholder="例: 大井町、渋谷、新宿...",
+    help="駅名の一部を入力すると、候補が絞り込まれます"
+)
+
+# 検索キーワードでフィルタリング
+if station_search:
+    filtered_stations = [s for s in station_options if station_search.lower() in s.lower()]
+else:
+    filtered_stations = station_options
+
 station_filter = st.sidebar.multiselect(
     "最寄り駅を選択",
-    options=station_options,
+    options=filtered_stations,
     default=[]
 )
 
