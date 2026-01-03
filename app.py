@@ -674,34 +674,41 @@ if total_items > 0:
                         st.markdown(f"- {weakness}")
                 
                 st.markdown(f"### 💰 価格情報")
-                st.markdown(f"**価格**: {prop['price']:,}万円")
-                st.markdown(f"**専有面積**: {prop['area']}㎡")
-                st.markdown(f"**㎡単価**: {prop['price_per_sqm'] / 10000:.1f}万円/㎡")
+                price_data = {
+                    "項目": ["価格", "専有面積", "㎡単価"],
+                    "値": [
+                        f"{prop['price']:,}万円",
+                        f"{prop['area']}㎡",
+                        f"{prop['price_per_sqm'] / 10000:.1f}万円/㎡"
+                    ]
+                }
+                st.table(price_data)
                 
                 st.markdown(f"### 🏠 物件詳細")
-                st.markdown(f"**築年数**: {prop['building_age']}年")
-                st.markdown(f"**間取り**: {prop['layout']}")
-                st.markdown(f"**階数**: {prop['floor']}階")
-                st.markdown(f"**向き**: {prop['direction']}")
+                detail_data = {
+                    "項目": ["築年数", "間取り", "階数", "向き"],
+                    "値": [
+                        f"{prop['building_age']}年",
+                        prop['layout'],
+                        f"{prop['floor']}階",
+                        prop['direction']
+                    ]
+                }
+                st.table(detail_data)
                 
                 st.markdown(f"### 💵 維持費")
                 mgmt_fee = prop['management_fee'] if prop['management_fee'] else 0
                 repair_fee = prop['repair_reserve'] if prop['repair_reserve'] else 0
                 
-                if prop['management_fee']:
-                    st.markdown(f"**管理費**: {prop['management_fee']:,}円/月")
-                else:
-                    st.markdown(f"**管理費**: データなし")
-                
-                if prop['repair_reserve']:
-                    st.markdown(f"**修繕積立金**: {prop['repair_reserve']:,}円/月")
-                else:
-                    st.markdown(f"**修繕積立金**: データなし")
-                
-                if mgmt_fee + repair_fee > 0:
-                    st.markdown(f"**合計**: {(mgmt_fee + repair_fee):,}円/月")
-                else:
-                    st.markdown(f"**合計**: データなし")
+                cost_data = {
+                    "項目": ["管理費", "修繕積立金", "合計"],
+                    "値": [
+                        f"{prop['management_fee']:,}円/月" if prop['management_fee'] else "データなし",
+                        f"{prop['repair_reserve']:,}円/月" if prop['repair_reserve'] else "データなし",
+                        f"{(mgmt_fee + repair_fee):,}円/月" if (mgmt_fee + repair_fee) > 0 else "データなし"
+                    ]
+                }
+                st.table(cost_data)
             
             with col2:
                 st.markdown(f"### 📊 スコア詳細")
