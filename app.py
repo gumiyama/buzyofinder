@@ -246,6 +246,20 @@ def get_locations():
     finally:
         session.close()
 
+def get_price_history(property_id):
+    """物件の価格履歴を取得"""
+    try:
+        session = get_db_session()
+        # PriceHistoryをインポート
+        from src.models.database import PriceHistory
+        history = session.query(PriceHistory).filter_by(property_id=property_id).order_by(PriceHistory.recorded_at.asc()).all()
+        return history
+    except Exception as e:
+        logger.error(f"Error fetching price history for property {property_id}: {e}")
+        return []
+    finally:
+        session.close()
+
 # 利用可能な路線を取得
 @st.cache_data(ttl=3600)
 def get_unique_lines():
@@ -731,6 +745,17 @@ if total_items > 0:
                     ]
                 }
                 st.table(price_data)
+                
+                # 価格履歴の表示
+                history = get_price_history(prop['id'])
+                if history and len(history) > 1:
+                    st.markdown("**📉 価格推移**")
+                    # 最新が上に来るように逆順で表示
+                    hist_data = {
+                        "日付": [h.recorded_at.strftime('%Y/%m/%d') for h in reversed(history)],
+                        "価格": [f"{h.price:,}万円" for h in reversed(history)]
+                    }
+                    st.table(hist_data)
                 
                 st.markdown(f"### 🏠 物件詳細")
                 detail_data = {

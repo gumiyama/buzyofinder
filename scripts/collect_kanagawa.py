@@ -9,59 +9,30 @@ import requests
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.models.database import get_session, get_engine, Property
+from src.models.database import get_session, get_engine, Property, save_or_update_property
 from src.scrapers.suumo_scraper import SuumoScraper
 
 # 神奈川県（武蔵小杉・鷺沼）の設定
 AREAS = {
-    'kawasaki_nakahara': {'pages': 20, 'name': '川崎市中原区（武蔵小杉など）'},
-    'kawasaki_miyamae': {'pages': 20, 'name': '川崎市宮前区（鷺沼など）'},
+    'kawasakishinakahara': {'pages': 20, 'name': '川崎市中原区（武蔵小杉など）'},
+    'kawasakishimiyamae': {'pages': 20, 'name': '川崎市宮前区（鷺沼など）'},
 }
 
 CRAWL_INTERVAL = 1.0
 
 def save_property(url, session, scraper):
-    """URLから物件情報を取得して保存（collect_tokyo23と同じロジック）"""
+    """URLから物件情報を取得して保存または更新"""
     try:
         source_id = url.split('/nc_')[1].split('/')[0] if '/nc_' in url else None
         if not source_id: return "skip"
         
-        existing = session.query(Property).filter_by(source_id=source_id).first()
-        if existing: return "exists"
-        
         detail = scraper.get_property_detail(url)
         if not detail or not detail.get('price'): return "error"
         
-        property_obj = Property(
-            source='SUUMO',
-            source_id=source_id,
-            url=url,
-            title=detail.get('title') or f'物件 {source_id}',
-            price=detail.get('price'),
-            area=detail.get('area'),
-            price_per_sqm=detail.get('price_per_sqm'),
-            layout=detail.get('layout'),
-            building_age=detail.get('building_age'),
-            floor=detail.get('floor'),
-            direction=detail.get('direction'),
-            address=detail.get('address'),
-            prefecture=detail.get('prefecture'),
-            city=detail.get('city'),
-            station_name=detail.get('station_name'),
-            station_distance=detail.get('station_distance'),
-            access_info=detail.get('access_info'),
-            management_fee=detail.get('management_fee'),
-            repair_reserve=detail.get('repair_reserve'),
-            features=detail.get('features', '{}'),
-            is_active=True
-        )
+        return save_or_update_property(session, detail, source_id)
         
-        session.add(property_obj)
-        session.commit()
-        return "saved"
     except Exception as e:
-        print(f"      ❌ 保存エラー ({url}): {e}")
-        session.rollback()
+        print(f"      ❌ 処理エラー ({url}): {e}")
         return "error"
 
 def process_area(area_code, config, session, scraper):

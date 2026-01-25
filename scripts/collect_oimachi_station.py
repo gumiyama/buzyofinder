@@ -1,75 +1,46 @@
 #!/usr/bin/env python
 """
-大規模データ収集スクリプト
-東京23区すべてから物件データを収集して500件以上を目指す
+大井町駅（ek_05130）指定の集中収集スクリプト
 """
-
 import os
 import sys
 import time
-from datetime import datetime
 from pathlib import Path
+import requests
+from bs4 import BeautifulSoup
 
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.models.database import get_session, get_engine, Property, PriceHistory, save_or_update_property
+from src.models.database import get_session, get_engine, Property, save_or_update_property
 from src.scrapers.suumo_scraper import SuumoScraper
-import requests
 
-# 東京23区の設定
-AREAS = {
-    'chiyoda': {'pages': 10, 'name': '千代田区'},
-    'chuo': {'pages': 10, 'name': '中央区'},
-    'minato': {'pages': 10, 'name': '港区'},
-    'shinjuku': {'pages': 10, 'name': '新宿区'},
-    'bunkyo': {'pages': 10, 'name': '文京区'},
-    'taito': {'pages': 10, 'name': '台東区'},
-    'sumida': {'pages': 10, 'name': '墨田区'},
-    'koto': {'pages': 10, 'name': '江東区'},
-    'shinagawa': {'pages': 10, 'name': '品川区'},
-    'meguro': {'pages': 10, 'name': '目黒区'},
-    'ota': {'pages': 10, 'name': '大田区'},
-    'setagaya': {'pages': 10, 'name': '世田谷区'},
-    'shibuya': {'pages': 10, 'name': '渋谷区'},
-    'nakano': {'pages': 10, 'name': '中野区'},
-    'suginami': {'pages': 10, 'name': '杉並区'},
-    'toshima': {'pages': 10, 'name': '豊島区'},
-    'kita': {'pages': 10, 'name': '北区'},
-    'arakawa': {'pages': 10, 'name': '荒川区'},
-    'itabashi': {'pages': 10, 'name': '板橋区'},
-    'nerima': {'pages': 10, 'name': '練馬区'},
-    'adachi': {'pages': 10, 'name': '足立区'},
-    'katsushika': {'pages': 10, 'name': '葛飾区'},
-    'edogawa': {'pages': 10, 'name': '江戸川区'},
+# 大井町駅の設定
+STATIONS = {
+    '05480': {'pages': 20, 'name': '大井町駅'},
 }
 
-CRAWL_INTERVAL = 3.0  # スクレイピング間隔
+CRAWL_INTERVAL = 1.0
 
 def save_property(url, session, scraper):
     """URLから物件情報を取得して保存または更新"""
     try:
-        # source_idを抽出
         source_id = url.split('/nc_')[1].split('/')[0] if '/nc_' in url else None
-        if not source_id:
-            return "skip"
+        if not source_id: return "skip"
         
-        # 詳細取得
         detail = scraper.get_property_detail(url)
-        if not detail or not detail.get('price'):
-            return "error"
+        if not detail or not detail.get('price'): return "error"
         
-        # 共通関数を使用して保存または更新
         return save_or_update_property(session, detail, source_id)
         
     except Exception as e:
         print(f"      ❌ 処理エラー ({url}): {e}")
         return "error"
 
-def process_area(area_code, config, session, scraper):
-    """区ごとにページを巡回し、見つけ次第保存"""
-    base_url = f'https://suumo.jp/ms/chuko/tokyo/sc_{area_code}/'
+def process_station(ek_code, config, session, scraper):
+    """駅ごとにページを巡回"""
+    base_url = f'https://suumo.jp/ms/chuko/tokyo/ek_{ek_code}/'
     pages = config['pages']
     
     headers = {
@@ -81,20 +52,23 @@ def process_area(area_code, config, session, scraper):
     for page in range(1, pages + 1):
         try:
             url = base_url if page == 1 else f"{base_url}?page={page}"
-            print(f"  📄 ページ {page}/{pages} をスキャン中...")
+            print(f"  📄 ページ {page}/{pages} をスキャン中... ({config['name']})")
             
             response = requests.get(url, headers=headers, timeout=30)
             if response.status_code != 200:
                 print(f"    ❌ HTTP {response.status_code}")
                 continue
             
-            from bs4 import BeautifulSoup
             soup = BeautifulSoup(response.text, 'html.parser')
-            links = soup.find_all('a', href=True)
+            # 検索結果メインリストのコンテナを特定（通常 'property_unit' クラスなどを持つ）
+            # もしくは、おすすめ物件を除外するために、特定のセクション内のみを探索
+            main_content = soup.find('div', id='js-bukkenList') or soup
+            links = main_content.find_all('a', href=True)
             
             page_urls = set()
             for link in links:
                 href = link['href']
+                # 駅近辺の検索結果に限定
                 if '/ms/chuko/tokyo/' in href and '/nc_' in href:
                     if not href.startswith('http'):
                         href = 'https://suumo.jp' + href
@@ -110,7 +84,7 @@ def process_area(area_code, config, session, scraper):
                     saved_count += 1
                     print(f"      ✅ 保存成功: {p_url.split('/nc_')[1].split('/')[0]}")
                 elif result == "exists":
-                    pass # 冗長なので出力しない
+                    pass
             
             time.sleep(CRAWL_INTERVAL)
             
@@ -122,22 +96,21 @@ def process_area(area_code, config, session, scraper):
 
 def main():
     print("=" * 60)
-    print("🚀 超高速インクリメンタル収集（目標: 500件以上）")
-    print("見つけ次第DBにコミットします。Streamlitでリアルタイムに確認可能")
+    print("🚀 大井町駅 集中収集（駅指定モード）")
     print("=" * 60)
     
     engine = get_engine()
     session = get_session(engine)
-    scraper = SuumoScraper(interval=1.0) # 加速
+    scraper = SuumoScraper(interval=1.0)
     
     total_saved = 0
     
     try:
-        for idx, (area_code, config) in enumerate(AREAS.items(), 1):
-            print(f"\n[{idx}/23] {config['name']} の処理を開始")
-            count = process_area(area_code, config, session, scraper)
+        for ek_code, config in STATIONS.items():
+            print(f"\n{config['name']} の処理を開始")
+            count = process_station(ek_code, config, session, scraper)
             total_saved += count
-            print(f"  ✨ {config['name']} 完了: +{count}件 (合計: {total_saved}件)")
+            print(f"  ✨ {config['name']} 完了: +{count}件")
             
     except KeyboardInterrupt:
         print("\n🛑 中断されました")
@@ -145,7 +118,6 @@ def main():
         session.close()
         print("\n" + "=" * 60)
         print(f"🏁 終了。今回のセッションでの新規保存: {total_saved}件")
-        print("=" * 60)
 
 if __name__ == '__main__':
     main()

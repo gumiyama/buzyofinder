@@ -103,6 +103,19 @@ class AreaStats(Base):
         return f"<AreaStats(area={self.area_name}, avg_price={self.avg_price_per_sqm:.0f}円/㎡)>"
 
 
+class PriceHistory(Base):
+    """物件価格履歴モデル"""
+    __tablename__ = 'price_history'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    property_id = Column(Integer, nullable=False)  # Property.id への参照
+    price = Column(Integer, nullable=False)  # 価格（万円）
+    recorded_at = Column(DateTime, default=datetime.now)
+    
+    def __repr__(self):
+        return f"<PriceHistory(property_id={self.property_id}, price={self.price}万円, date={self.recorded_at})>"
+
+
 def get_engine(db_path='data/mansion_scientist.db'):
     """データベースエンジンを取得"""
     return create_engine(f'sqlite:///{db_path}')
@@ -119,3 +132,72 @@ def get_session(engine):
     """データベースセッションを取得"""
     Session = sessionmaker(bind=engine)
     return Session()
+
+
+def save_or_update_property(session, detail, source_id):
+    """物件情報を保存または更新（価格履歴付き）"""
+    try:
+        from src.models.database import Property, PriceHistory
+        existing = session.query(Property).filter_by(source_id=source_id).first()
+        
+        if existing:
+            # 価格変更のチェック
+            new_price = detail.get('price')
+            if new_price and existing.price != new_price:
+                # 履歴に追加
+                history = PriceHistory(
+                    property_id=existing.id,
+                    price=new_price
+                )
+                session.add(history)
+                
+                # 主要な数値を更新
+                existing.price = new_price
+                existing.price_per_sqm = detail.get('price_per_sqm')
+                existing.last_updated = datetime.now()
+                session.commit()
+                return "updated"
+            return "exists"
+        else:
+            # 新規保存
+            property_obj = Property(
+                source=detail.get('source', 'SUUMO'),
+                source_id=source_id,
+                url=detail.get('url'),
+                title=detail.get('title'),
+                price=detail.get('price'),
+                area=detail.get('area'),
+                price_per_sqm=detail.get('price_per_sqm'),
+                layout=detail.get('layout'),
+                building_age=detail.get('building_age'),
+                floor=detail.get('floor'),
+                direction=detail.get('direction'),
+                address=detail.get('address'),
+                prefecture=detail.get('prefecture'),
+                city=detail.get('city'),
+                station_name=detail.get('station_name'),
+                station_distance=detail.get('station_distance'),
+                access_info=detail.get('access_info'),
+                management_fee=detail.get('management_fee'),
+                repair_reserve=detail.get('repair_reserve'),
+                features=detail.get('features', '{}'),
+                is_active=True,
+                first_seen=datetime.now(),
+                last_updated=datetime.now()
+            )
+            session.add(property_obj)
+            session.flush() # IDを取得するためにフラッシュ
+            
+            # 初回価格も履歴に記録
+            if property_obj.price:
+                history = PriceHistory(
+                    property_id=property_obj.id,
+                    price=property_obj.price
+                )
+                session.add(history)
+                
+            session.commit()
+            return "saved"
+    except Exception as e:
+        session.rollback()
+        raise e
