@@ -1,0 +1,55 @@
+name: Daily Property Refresh
+
+on:
+  schedule:
+    # 03:20 JST every day (18:20 UTC previous day)
+    - cron: "20 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-property-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Prepare runtime directories
+        run: mkdir -p logs data
+
+      - name: Refresh Tokyo 23 wards property data
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: python scripts/collect_tokyo23.py
+
+      - name: Commit updated database
+        run: |
+          if git diff --quiet -- data/mansion_scientist.db; then
+            echo "No database changes detected."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/mansion_scientist.db
+          git commit -m "Auto-update property database $(date -u +'%Y-%m-%d')"
+          git push
